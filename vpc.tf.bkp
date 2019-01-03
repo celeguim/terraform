@@ -107,3 +107,16 @@ resource "aws_network_acl" "privacl" {
     Name = "MyPrivACL"
   }
 }
+
+
+resource "aws_route" "public_internet_gateway" {
+  destination_cidr_block = "0.0.0.0/0"
+  count             = "${length(var.public_subnet_list) > 0 ? 1 : 0}"
+  route_table_id    = "${aws_route_table.public.id}"
+  gateway_id        = "${aws_internet_gateway.public.id}"
+
+  timeouts {
+    create = "5m"
+  }
+}
+
