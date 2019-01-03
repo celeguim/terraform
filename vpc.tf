@@ -93,8 +93,112 @@ resource "aws_route_table_association" "public" {
 ###################
 resource "aws_internet_gateway" "public" {
   vpc_id = "${local.vpc_id}"
+
   tags {
     Name = "${var.aws_region}-${var.public_subnet_suffix}"
   }
+}
+
+######################
+# Private Network ACL
+######################
+resource "aws_network_acl" "private_acl" {
+  vpc_id = "${aws_vpc.vpc.id}"
+#  count = "${length(var.public_subnet_list)}"
+  subnet_ids = ["${aws_subnet.private_subnet.*.id}"]
+
+  depends_on = ["aws_route_table_association.private"]
+
+  tags {
+    Name = "acl-${var.private_subnet_suffix}"
+  }
+}
+
+######################
+# Public Network ACL
+######################
+resource "aws_network_acl" "public_acl" {
+  vpc_id = "${aws_vpc.vpc.id}"
+#  count = "${length(var.public_subnet_list)}"
+  subnet_ids = ["${aws_subnet.public_subnet.*.id}"]
+
+  depends_on = ["aws_route_table_association.public"]
+
+  tags {
+    Name = "acl-${var.public_subnet_suffix}"
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "${var.public_subnet_list[count.index]}"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 101
+    action     = "allow"
+    cidr_block = "${var.public_subnet_list[count.index]}"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 102
+    action     = "allow"
+    cidr_block = "${var.public_subnet_list[count.index]}"
+    from_port  = 22
+    to_port    = 22
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 103
+    action     = "allow"
+    cidr_block = "${var.public_subnet_list[count.index]}"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+ egress = {
+    protocol = "all"
+    rule_no = 100
+    action = "allow"
+    cidr_block =  "${aws_vpc.vpc.cidr_block}"
+    from_port = 0
+    to_port = 0
+ }
+
+ egress = {
+    protocol = "tcp"
+    rule_no = 101
+    action = "allow"
+    cidr_block =  "0.0.0.0/0"
+    from_port = 80
+    to_port = 80
+  }
+
+  egress = {
+    protocol = "tcp"
+    rule_no = 102
+    action = "allow"
+    cidr_block =  "0.0.0.0/0"
+    from_port = 443
+    to_port = 443
+  }
+
+  egress = {
+    protocol = "tcp"
+    rule_no = 103
+    action = "allow"
+    cidr_block =  "0.0.0.0/0"
+    from_port = 1024
+    to_port = 65535
+  }
+
 }
 
