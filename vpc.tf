@@ -1,0 +1,109 @@
+
+provider "aws" {
+  region = "${var.aws_region}"
+  shared_credentials_file = "~/.aws/credentials"
+  profile = "default"
+}
+
+resource "aws_vpc" "vpc" {
+  cidr_block  = "${var.vpc_cidr}"
+  enable_dns_hostnames = true
+
+  tags {
+    Name = "${var.vpc_name}"
+  }
+}
+
+
+### Private subnets
+resource "aws_subnet" "private_subnet_a" {
+  count = "${length(var.private_subnet_list) > 0 ? length(var.private_subnet_list) : 0}"
+  vpc_id = "${aws_vpc.vpc.id}"
+  cidr_block = "${var.private_subnet_list[count.index]}"
+  availability_zone = "${element(var.az_list, count.index)}"
+  tags = "${merge(map("Name", format("%s-${var.private_subnet_suffix}-%s", var.vpc_name, element(var.az_list, count.index))), var.tags, var.private_subnet_tags)}"
+}
+
+
+resource "aws_subnet" "public_subnet_a" {
+  vpc_id                  = "${aws_vpc.vpc.id}"
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-1a"
+  map_public_ip_on_launch = false
+
+  tags {
+    Name = "MyPubSub1"
+  }
+}
+
+
+resource "aws_internet_gateway" "internet_gateway" {
+  vpc_id = "${aws_vpc.vpc.id}"
+}
+
+resource "aws_route_table" "public_routetable" {
+  vpc_id = "${aws_vpc.vpc.id}"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.internet_gateway.id}"
+  }
+
+  tags {
+    Name = "MyPubRoute"
+  }
+}
+
+resource "aws_route_table" "private_routetable" {
+  vpc_id = "${aws_vpc.vpc.id}"
+
+  tags {
+    Name = "MyPrivRoute"
+  }
+}
+
+resource "aws_route_table_association" "route_public_subnet_a" {
+  subnet_id      = "${aws_subnet.public_subnet_a.id}"
+  route_table_id = "${aws_route_table.public_routetable.id}"
+}
+
+resource "aws_route_table_association" "route_private_subnet_a" {
+  subnet_id      = "${aws_subnet.private_subnet_a.id}"
+  route_table_id = "${aws_route_table.private_routetable.id}"
+}
+
+resource "aws_network_acl" "pubacl" {
+  vpc_id = "${aws_vpc.vpc.id}"
+  subnet_ids = ["${aws_subnet.public_subnet_a.id}"]
+
+  egress {
+    protocol   = "tcp"
+    rule_no    = 200
+    action     = "allow"
+    cidr_block = "10.0.1.0/24"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "10.0.1.0/24"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  tags = {
+    Name = "MyPubACL"
+  }
+}
+
+resource "aws_network_acl" "privacl" {
+  vpc_id = "${aws_vpc.vpc.id}"
+  subnet_ids = ["${aws_subnet.private_subnet_a.id}"]
+
+  tags = {
+    Name = "MyPrivACL"
+  }
+}
