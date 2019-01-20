@@ -132,7 +132,7 @@ resource "aws_network_acl" "public_acl" {
     protocol   = "tcp"
     rule_no    = 100
     action     = "allow"
-    cidr_block = "${var.public_subnet_list[count.index]}"
+    cidr_block = "0.0.0.0/0"
     from_port  = 80
     to_port    = 80
   }
@@ -150,7 +150,7 @@ resource "aws_network_acl" "public_acl" {
     protocol   = "tcp"
     rule_no    = 102
     action     = "allow"
-    cidr_block = "${var.public_subnet_list[count.index]}"
+    cidr_block = "0.0.0.0/0"
     from_port  = 22
     to_port    = 22
   }
@@ -164,14 +164,14 @@ resource "aws_network_acl" "public_acl" {
     to_port    = 65535
   }
 
- egress = {
-    protocol = "all"
-    rule_no = 100
-    action = "allow"
-    cidr_block =  "${aws_vpc.vpc.cidr_block}"
-    from_port = 0
-    to_port = 0
- }
+# egress = {
+#    protocol = "all"
+#    rule_no = 100
+#    action = "allow"
+#    cidr_block =  "${aws_vpc.vpc.cidr_block}"
+#    from_port = 0
+#    to_port = 0
+# }
 
  egress = {
     protocol = "tcp"
@@ -201,4 +201,5 @@ resource "aws_network_acl" "public_acl" {
   }
 
 }
+
 

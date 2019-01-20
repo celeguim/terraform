@@ -19,3 +19,6 @@ output "public route" {
   value = "${formatlist("%v", aws_route_table.public.*.id)}"
 }
 
+output "ec2" {
+  value = ["${module.ec2_cluster.id}","${module.ec2_cluster.public_ip}"]
+}
